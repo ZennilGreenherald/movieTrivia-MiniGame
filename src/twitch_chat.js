@@ -2,27 +2,30 @@
 globalThis.twitchChatConnect = twitchChatConnect;
 
 const TwitchWebSocketUrl = 'wss://irc-ws.chat.twitch.tv:443';
-// const chatBody = (document.querySelector("#ChatMessages"));
+
 let wsTwitch;
 let channelName;
 let parseChatCallback;
+
 export function twitchChatConnect(name, chatParseCallback)
 {
   channelName = name;
   parseChatCallback = chatParseCallback;
   wsTwitch = new WebSocket(TwitchWebSocketUrl);
-  wsTwitch.onopen = ()=>{
+  wsTwitch.onopen = () => {
     console.log("chat opened");
     wsTwitch.send(`CAP REQ :twitch.tv/commands twitch.tv/tags`);
     wsTwitch.send(`NICK justinfan6969`);
     wsTwitch.send(`JOIN #${channelName}`);
-    console.log('WebSocket connection opened');    //debug
+    console.log('WebSocket connection opened');
 
     let chatMSG = document.createElement("div");
     let auth = document.createElement("div");
-    parseChatCallback("",
+    parseChatCallback(
+      "",
       `Connected to ${channelName}'s chat!`,
-      auth, chatMSG
+      auth,
+      chatMSG
     );
   }
   wsTwitch.onmessage = onMessage;
@@ -32,72 +35,55 @@ export function twitchChatConnect(name, chatParseCallback)
 
 function onMessage(fullmsg)
 {
-  // console.log("fullmsg: ", fullmsg);
-  let txt = fullmsg.data;
-  // console.log("txt: ", txt);
+  const txt = fullmsg.data;
+  console.log("txt: ", txt);
   let name = '';
   let outmsg = '';
   let indx = 0;
-  // let just_tags = '';
-  // let tags_obj = {};
-  // const emote_list = [];
 
   if (txt[0] == '@') {
-    indx = txt.indexOf(' ');
-    // just_tags = txt.slice(0, indx);
-    indx++;
-    // tags_obj = parse_tags(just_tags);
-    // get_emote_list(tags_obj['emotes'], emote_list);
+    indx = txt.indexOf(' ') + 1;
   }
 
   if (txt[indx] == ':') {
-    // get the important data positions
-    let pos1 = txt.indexOf('@', indx) + 1;
-    let pos2 = txt.indexOf(".", pos1);
-    let pos3 = txt.indexOf(`#${channelName}`)+2;
-    pos3 += channelName.length + 1;
-
-    // create strings based on those positions
+    const pos1 = txt.indexOf('@', indx) + 1;
+    const pos2 = txt.indexOf(".", pos1);
     name = txt.substring(pos1, pos2).trim();
+    if (new Set([":tmi", "justinfan6969", "@emote-only=0;", ":justinfan6969"]).has(name)) {
+      console.log(`Invalid name: _${name}_`);
+      return;
+    }
 
-    if ( (name == ":tmi")
-      || (name == "justinfan6969")
-      || (name.includes("@emote-only=0;"))
-      || (name == ":justinfan6969"))
-      { return; }
-
+    const pos3 = txt.indexOf(`#${channelName}`) + channelName.length + 3;
     outmsg = txt.substring(pos3).trim();
+    console.log(`outmsg: ${outmsg}`);
   }
   else {
-    // handle pings
-    // other twitch specific things should
-    // be handled here too
-    let pos2 = txt.indexOf(":");
+    // handle pings & other twitch specific things
+    const pos2 = txt.indexOf(":");
     name = txt.slice(0, pos2).trim();
     outmsg = txt.slice(pos2).trim();
 
     if (name == 'PING') {
-      // console.log('PONG ' + outmsg);
+      console.log('PONG ' + outmsg);
       wsTwitch.send('PONG ' + outmsg);
     }
     return;
   }
 
   //not running bot commands here
+  console.log(`Invalid message: _${outmsg}_`);
   if (outmsg[0] == '!') {
     return;
   }
 
-  // return display_msg(name, outmsg);
+  console.log(`name ${name}, outmsg: ${outmsg}`);
   display_msg(name, outmsg);
-  // console.log("name", name);
-  // console.log("outmsg", outmsg);
-
 }
 
 // display chat message on stream
 // calls parseChatCallback() with elements created here
-//auth & chatMSG are both stylized here
+// auth & chatMSG are both stylized here
 function display_msg(name, outmsg, tags_obj, emote_list)
 {
   let emote;
@@ -118,13 +104,13 @@ function display_msg(name, outmsg, tags_obj, emote_list)
   auth.textContent = (tags_obj?.display_name || name) + ' ';
 
   if (tags_obj?.emotes) {
-      let parts = [];
-      let end_indx = outmsg.length;
+    let parts = [];
+    let end_indx = outmsg.length;
 
     for (let i = emote_list.length; --i >= 0; ) {
       emote = document.createElement("img");
       emote.setAttribute('src', emote_list[i].url);
-      if (i!==0) {
+      if (i !== 0) {
         emote.style = 'margin-left: -14px';
       }
 
